@@ -14,7 +14,17 @@ REPORT = Path.home() / "project_output" / "03_flow_analysis.md"
 def load(path):
     if not path.exists():
         return []
-    return [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if "priority=" in line]
+    entries = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line.startswith("cookie="):
+            continue
+        line = re.sub(r"duration=[^,]+,\s*", "", line)
+        line = re.sub(r"n_packets=[^,]+,\s*", "", line)
+        line = re.sub(r"n_bytes=[^,]+,\s*", "", line)
+        line = re.sub(r"idle_age=[^,]+,\s*", "", line)
+        entries.append(line)
+    return entries
 
 
 def extract_dst_mac(entry):
@@ -23,7 +33,13 @@ def extract_dst_mac(entry):
 
 
 def suspicious(entry):
-    return "arp" in entry.lower() or "CONTROLLER" in entry or "dl_dst=" not in entry
+    lower = entry.lower()
+    return (
+        "dl_src=00:00:00:00:00:03" in lower
+        or "dl_dst=00:00:00:00:00:03" in lower
+        or "arp_spa=10.0.0.2" in lower and "dl_src=00:00:00:00:00:03" in lower
+        or "arp_spa=10.0.0.1" in lower and "dl_src=00:00:00:00:00:03" in lower
+    )
 
 
 def main():

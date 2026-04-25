@@ -1,0 +1,16 @@
+[2026-04-25 15:27:58] GET /?user=alice&password=rutgers-demo HTTP
+GET /?user=alice&password=rutgers-demo HTTP/1.1
+Host: 10.0.0.2
+Authorization: Basic YWxpY2U6cnV0Z2Vycw==
+Connection: close
+
+
+------------------------------------------------------------------------
+[2026-04-25 15:27:58] GET /?user=alice&password=rutgers-demo HTTP
+GET /?user=alice&password=rutgers-demo HTTP/1.1
+Host: 10.0.0.2
+Authorization: Basic YWxpY2U6cnV0Z2Vycw==
+Connection: close
+
+
+------------------------------------------------------------------------

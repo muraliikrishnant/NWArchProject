@@ -1,0 +1,23 @@
+INFO:.root.project_output.pox_l2_learning:POX L2 learning controller loaded on 6633
+WARNING:version:POX requires one of the following versions of Python: 3.6 3.7 3.8 3.9
+WARNING:version:You're running Python 3.10.
+WARNING:version:If you run into problems, try using a supported version.
+INFO:core:POX 0.7.0 (gar) is up.
+INFO:openflow.of_01:[00-00-00-00-00-01 3] connected
+INFO:.root.project_output.pox_l2_learning:Switch [00-00-00-00-00-01 3] connected
+INFO:.root.project_output.pox_l2_learning:ARP observed: opcode=request src_ip=10.0.0.1 src_mac=00:00:00:00:00:01 dst_ip=10.0.0.2 ingress=1
+INFO:.root.project_output.pox_l2_learning:ARP observed: opcode=reply src_ip=10.0.0.2 src_mac=00:00:00:00:00:02 dst_ip=10.0.0.1 ingress=2
+INFO:.root.project_output.pox_l2_learning:ARP observed: opcode=request src_ip=10.0.0.1 src_mac=00:00:00:00:00:01 dst_ip=10.0.0.3 ingress=1
+INFO:.root.project_output.pox_l2_learning:ARP observed: opcode=reply src_ip=10.0.0.3 src_mac=00:00:00:00:00:03 dst_ip=10.0.0.1 ingress=3
+INFO:.root.project_output.pox_l2_learning:ARP observed: opcode=request src_ip=10.0.0.2 src_mac=00:00:00:00:00:02 dst_ip=10.0.0.3 ingress=2
+INFO:.root.project_output.pox_l2_learning:ARP observed: opcode=reply src_ip=10.0.0.3 src_mac=00:00:00:00:00:03 dst_ip=10.0.0.2 ingress=3
+INFO:.root.project_output.pox_l2_learning:ARP observed: opcode=request src_ip=10.0.0.2 src_mac=00:00:00:00:00:02 dst_ip=10.0.0.1 ingress=2
+INFO:.root.project_output.pox_l2_learning:ARP observed: opcode=request src_ip=10.0.0.3 src_mac=00:00:00:00:00:03 dst_ip=10.0.0.1 ingress=3
+INFO:.root.project_output.pox_l2_learning:ARP observed: opcode=reply src_ip=10.0.0.1 src_mac=00:00:00:00:00:01 dst_ip=10.0.0.2 ingress=1
+INFO:.root.project_output.pox_l2_learning:ARP observed: opcode=reply src_ip=10.0.0.1 src_mac=00:00:00:00:00:01 dst_ip=10.0.0.3 ingress=1
+INFO:.root.project_output.pox_l2_learning:ARP observed: opcode=request src_ip=10.0.0.3 src_mac=00:00:00:00:00:03 dst_ip=10.0.0.1 ingress=3
+INFO:.root.project_output.pox_l2_learning:ARP observed: opcode=request src_ip=10.0.0.3 src_mac=00:00:00:00:00:03 dst_ip=10.0.0.2 ingress=3
+INFO:.root.project_output.pox_l2_learning:ARP observed: opcode=reply src_ip=10.0.0.2 src_mac=00:00:00:00:00:02 dst_ip=10.0.0.3 ingress=2
+INFO:.root.project_output.pox_l2_learning:ARP observed: opcode=reply src_ip=10.0.0.2 src_mac=00:00:00:00:00:03 dst_ip=10.0.0.1 ingress=3
+INFO:.root.project_output.pox_l2_learning:ARP observed: opcode=reply src_ip=10.0.0.1 src_mac=00:00:00:00:00:03 dst_ip=10.0.0.2 ingress=3
+INFO:openflow.of_01:[00-00-00-00-00-01 3] closed

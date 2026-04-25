@@ -25,9 +25,10 @@ RULES = [
 
 
 def main():
+    prefix = ["sudo"] if subprocess.run(["bash", "-lc", "command -v sudo >/dev/null 2>&1"]).returncode == 0 else []
     installed = []
     for name, rule in RULES:
-        subprocess.run(["sudo", "ovs-ofctl", "add-flow", "s1", rule], check=True)
+        subprocess.run(prefix + ["ovs-ofctl", "-O", "OpenFlow10", "add-flow", "s1", rule], check=True)
         installed.append((name, rule))
 
     print("| Rule | Installed | Match/Action |")

@@ -12,15 +12,22 @@ if [[ "$label" != "before" && "$label" != "after" ]]; then
   exit 1
 fi
 
-out_dir="$HOME/project_output"
+out_dir="${PROJECT_OUTPUT_DIR:-$HOME/project_output}"
 mkdir -p "$out_dir"
 timestamp="$(date +%Y%m%d_%H%M%S)"
 outfile="$out_dir/flows_${label}_${timestamp}.txt"
+stablefile="$out_dir/flows_${label}.txt"
+runner=()
+if command -v sudo >/dev/null 2>&1; then
+  runner=(sudo)
+fi
 
 echo "# Flow dump: $label"
 echo "# File: $outfile"
 
-sudo ovs-ofctl dump-flows s1 | tee "$outfile"
+"${runner[@]}" ovs-ofctl -O OpenFlow10 dump-flows s1 | tee "$outfile" > "$stablefile"
+
+echo "# Stable copy: $stablefile"
 
 echo
 echo "# Pretty view"

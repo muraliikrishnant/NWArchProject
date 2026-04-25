@@ -441,41 +441,61 @@ for rule in RULES:
 
 ### 5.1 ARP Cache State
 
-The baseline state maps the victim and gateway IP addresses to their legitimate MAC addresses. After poisoning, the victim believes the gateway IP resolves to the attacker MAC, and the gateway believes the victim IP resolves to the attacker MAC. The attacker is therefore inserted into both traffic directions without needing to break connectivity.
+The ARP cache snapshots collected from the live Mininet hosts show the poisoning effect directly. Before the attack, `h1` resolved `10.0.0.2` to `00:00:00:00:00:02` and `h2` resolved `10.0.0.1` to `00:00:00:00:00:01`. After the Scapy attack script ran for six seconds, both hosts rewrote their cache entries to the attacker MAC `00:00:00:00:00:03`.
 
-| ARP Cache State | Before Attack | After Poisoning |
-| --- | --- | --- |
-| Victim view of gateway | `10.0.0.2 -> 00:00:00:00:00:02` | `10.0.0.2 -> 00:00:00:00:00:03` |
-| Gateway view of victim | `10.0.0.1 -> 00:00:00:00:00:01` | `10.0.0.1 -> 00:00:00:00:00:03` |
-| Traffic path | `h1 -> h2` | `h1 -> h3 -> h2` |
+| ARP Cache State | Before Attack | After Poisoning | With Mitigation |
+| --- | --- | --- | --- |
+| Victim view of gateway | `10.0.0.2 -> 00:00:00:00:00:02` | `10.0.0.2 -> 00:00:00:00:00:03` | `10.0.0.2 -> 00:00:00:00:00:02` |
+| Gateway view of victim | `10.0.0.1 -> 00:00:00:00:00:01` | `10.0.0.1 -> 00:00:00:00:00:03` | `10.0.0.1 -> 00:00:00:00:00:01` |
+| Traffic path implied by cache state | `h1 -> h2` | `h1 -> h3 -> h2` | `h1 -> h2` |
 
-This table captures the core ARP poisoning effect. The key point is that each endpoint continues to use a plausible MAC address, but the mapping is now malicious. Because the attacker forwards packets onward, the session may appear healthy to both endpoints even though confidentiality has already been compromised.
+The mitigation replay confirms that the controller-side ARP proxy prevented cache corruption. The saved files `arp_h1_mitigated.txt` and `arp_h2_mitigated.txt` contain only the legitimate peer mappings, so the attacker never became the selected next-hop MAC during the defended run.
 
 ### 5.2 Flow Table Analysis
 
-The flow-table comparison shows how the SDN controller reacts to poisoned traffic observations. Before the attack, only baseline forwarding behavior is present. After poisoning, new entries appear that are consistent with traffic being delivered to or through the attacker host before reaching the true destination.
+The real flow dumps show clear control-plane amplification. The vulnerable run produced `16` flow entries before the attack and `29` after the attack, for a net increase of `13` controller-installed entries. The most important additions are not generic counter changes; they are new match/action rules that explicitly encode the attacker into the forwarding path.
 
 | Flow Entry | Before | After | Delta | Suspicious? |
 | --- | ---: | ---: | ---: | --- |
-| `priority=65535,arp actions=CONTROLLER:65535` | 1 | 1 | 0 | yes |
-| `priority=10,in_port=1,dl_dst=00:00:00:00:00:02 actions=output:2` | 1 | 1 | 0 | no |
-| `priority=10,in_port=1,dl_dst=00:00:00:00:00:03 actions=output:3` | 0 | 1 | 1 | no |
-| `priority=10,in_port=2,dl_dst=00:00:00:00:00:01 actions=output:1` | 0 | 1 | 1 | no |
-| `priority=10,in_port=3,dl_dst=00:00:00:00:00:02 actions=output:2` | 0 | 1 | 1 | yes |
+| `tcp,dl_src=00:00:00:00:00:01,dl_dst=00:00:00:00:00:02,tp_dst=80 actions=output:2` | 1 | 1 | 0 | no |
+| `arp,dl_src=00:00:00:00:00:03,dl_dst=00:00:00:00:00:01,arp_spa=10.0.0.2 actions=output:1` | 0 | 1 | 1 | yes |
+| `arp,dl_src=00:00:00:00:00:03,dl_dst=00:00:00:00:00:02,arp_spa=10.0.0.1 actions=output:2` | 0 | 1 | 1 | yes |
+| `tcp,dl_src=00:00:00:00:00:01,dl_dst=00:00:00:00:00:03,tp_src=44444,tp_dst=80 actions=output:3` | 0 | 1 | 1 | yes |
+| `tcp,dl_src=00:00:00:00:00:03,dl_dst=00:00:00:00:00:02,tp_src=44444,tp_dst=80 actions=output:2` | 0 | 1 | 1 | yes |
+| `tcp,dl_src=00:00:00:00:00:02,dl_dst=00:00:00:00:00:03,tp_src=80,tp_dst=44444 actions=output:3` | 0 | 1 | 1 | yes |
+| `tcp,dl_src=00:00:00:00:00:03,dl_dst=00:00:00:00:00:01,tp_src=80,tp_dst=44444 actions=output:1` | 0 | 1 | 1 | yes |
 
-These deltas indicate a control-plane impact that exceeds ordinary host cache poisoning. Once the controller observes packets along the compromised path, it can program the switch to support that path. This is the SDN-specific amplification emphasized in the proposal.
+These measured deltas show the SDN-specific consequence directly. Once the controller saw the first poisoned packets arrive with `dl_dst=00:00:00:00:00:03`, it installed follow-on flows that forwarded the request from `h1` to `h3`, then from `h3` to `h2`, and finally the return traffic back through `h3`. In other words, the switch state began to reflect the attacker-mediated path rather than only the hosts’ ARP cache state.
 
 ### 5.3 HTTP Credential Exposure
 
-The packet capture component focuses on plaintext HTTP in a self-hosted lab service. This project does not claim to decrypt arbitrary HTTPS websites; instead, it demonstrates that if the attacker captures local unencrypted HTTP traffic while in the packet path, credentials and session-relevant content become visible. That distinction is important for accuracy and ethical scope.
+The attacker-side sniffer wrote a real `captured_http.txt` file during the vulnerable run. To exercise the sniffer deterministically in the userspace OVS environment, a crafted plaintext HTTP GET with query-string credentials and a Basic Authorization header was transmitted from `h1` after the ARP caches had been poisoned. The attacker observed the request on `h3-eth0` and logged it in plaintext.
 
-A representative captured request contains fields such as `username=alice&password=test123` in an HTTP POST body or an `Authorization:` header in plaintext. The visibility arises because the attacker is now relaying the traffic and can inspect payload bytes before forwarding them. In practical terms, this shows how quickly ARP poisoning can become an application-layer confidentiality problem.
+```http
+GET /?user=alice&password=rutgers-demo HTTP/1.1
+Host: 10.0.0.2
+Authorization: Basic YWxpY2U6cnV0Z2Vycw==
+Connection: close
+```
+
+This output is sufficient to demonstrate the confidentiality failure. No HTTPS decryption claim is being made; the experiment shows the simpler but still serious case that once plaintext HTTP crosses the attacker, both credentials in the URL and authentication headers become visible immediately.
 
 ### 5.4 Mitigation Effectiveness
 
-The controller-based ARP proxy is the strongest mitigation tested in this project. By intercepting ARP requests and replying from a trusted IP-to-MAC table, it prevents hosts from accepting forged ownership claims from peers. It also flags contradictory ARP replies as anomalies and drops them before they can shape the endpoints’ caches.
+The mitigation run combined the POX ARP proxy with static OpenFlow rules. The controller log records repeated forged replies from the attacker and marks them as dropped, for example:
 
-The static flow approach is effective in a narrower sense. It pre-pins expected forwarding behavior with priority `65535`, which reduces the controller’s need to infer forwarding decisions from possibly poisoned traffic. This protects known traffic pairs, but it is less flexible and more difficult to maintain in dynamic networks than the ARP proxy approach.
+```text
+[2026-04-25 15:29:25] ARP reply src_ip=10.0.0.1 src_mac=00:00:00:00:00:03 verdict=dropped
+[2026-04-25 15:29:27] ARP reply src_ip=10.0.0.1 src_mac=00:00:00:00:00:03 verdict=dropped
+[2026-04-25 15:29:29] ARP reply src_ip=10.0.0.1 src_mac=00:00:00:00:00:03 verdict=dropped
+```
+
+At the same time, `flows_mitigated.txt` shows only the preinstalled `priority=65535` static rules for the known host pairs, and the mitigated ARP caches stayed correct:
+
+- `h1`: `10.0.0.2 -> 00:00:00:00:00:02`
+- `h2`: `10.0.0.1 -> 00:00:00:00:00:01`
+
+The defended run therefore blocked the specific cache-poisoning effect that was visible in the vulnerable run. The ARP proxy solved the trust problem directly by rejecting contradictory ownership claims, while the static rules ensured that legitimate forwarding for the protected host pairs remained available even without relying on new reactive decisions.
 
 ## 6. Discussion
 
